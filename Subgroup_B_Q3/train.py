@@ -17,12 +17,16 @@ while True:
     print(f"Retrieved {skip} rows")
 
 df = pd.DataFrame(df_list)
-df_model = df[["purchase_date", "actual_delivery_time"]].groupby(by="purchase_date", as_index=False).mean()
-df_model = df_model.rename(columns={"purchase_date":"ds", "actual_delivery_time": "y"}, inplace=False)
+supplier_list = list(df['supplier'].unique())
 
-prophet_model = Prophet()
-print(f"Training model for {len(df_model)} data points")
-prophet_model.fit(df_model)
+for _supplier in supplier_list:
+    df_model = df[df['supplier'] == _supplier]
+    df_model = df_model[["purchase_date", "actual_delivery_time"]].groupby(by="purchase_date", as_index=False).mean()
+    df_model = df_model.rename(columns={"purchase_date":"ds", "actual_delivery_time": "y"}, inplace=False)
 
-with open('./serialized_model.json', 'w') as f:
-    f.write(model_to_json(prophet_model))
+    prophet_model = Prophet()
+    print(f"Training {_supplier} model for {len(df_model)} data points")
+    prophet_model.fit(df_model)
+
+    with open(f'./models/serialized_model_{_supplier}.json', 'w') as f:
+        f.write(model_to_json(prophet_model))
