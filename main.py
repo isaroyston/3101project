@@ -6,7 +6,7 @@ app = FastAPI()
 
 # Include individual apps as routers
 app.mount("/database", database_app)
-app.mount("Subgroup_B_Q3", lzc_model_app)
+app.mount("/Subgroup_B_Q3", lzc_model_app)
 
 @app.get("/")
 def root():
