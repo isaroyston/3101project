@@ -1,7 +1,7 @@
 from fastapi import FastAPI
 from prophet.serialize import model_from_json
 
-with open('./lzc_model/serialized_model.json', 'r') as f:
+with open('./Subgroup_B_Q3/serialized_model.json', 'r') as f:
     prophet_model = model_from_json(f.read())
 
 app = FastAPI()
