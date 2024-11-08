@@ -16,7 +16,7 @@ def extract_category(description):
     else:
         # Special cases for descriptions without ' - '
         if desc.startswith('Coffee'):
-            category = 'Coffee products'
+            category = 'Coffee Products'
         elif desc == 'Medicine':
             category = 'Medicine'
         elif desc == 'Kitchen Supplies':
@@ -416,8 +416,8 @@ def plot_bar_graph(df):
 
 def individual_clv(df):
     '''
-    This function calculates the Customer Lifetime Value (CLV) of each individual customer according to the transactions in the WHOLE dataset (2014-2020), excluding 2021 incomplete data.
-    Therefore, this CLV value is based on purchases from 2014-2020, assuming we compute this CLV at the end of 2020.
+    This function calculates the CLV of each individual customer based on transactions in the WHOLE dataset (2014-2020), excluding 2021 incomplete data.
+    Therefore, this CLV value is an measure of the lifetime value of each customer at the end of 2020. 
     We output the dataframe with a new CLV column.
     '''
 
@@ -439,8 +439,8 @@ def individual_clv(df):
 
 def clv_plot(customer_data):
     '''
-    This function outputs a histogram and a boxplot showing the distribution of CLV for our data, 
-    and scatter plots of CLV vs Total Revenue and CLV vs Lifespan to illustrate the relationship between the variables.
+    Generates a histogram and a boxplot of CLV distribution
+    and scatter plots of CLV vs. Total Revenue and CLV vs. Lifespan to illustrate the relationship between the variables.
     '''
 
     plt.figure(figsize=(12, 10))
@@ -505,25 +505,8 @@ def annual_individual_clv(df):
 
 def annual_CLV_plot(customer_data):
     '''
-    This function outputs a histogram and a boxplot showing the distribution of annual CLV for our data.
+    Generates a histogram showing the annual CLV distribution.
     '''
-
-    ### Boxplot distribution
-    # Set up the plot
-    plt.figure(figsize=(12, 8))
-
-    # Plot the distribution of annual CLV for each year
-    sns.boxplot(data=customer_data, x='year', y='annual_CLV', palette='Set2')
-
-    # Customize the plot for better readability
-    plt.title('Distribution of Annual CLV for Each Year')
-    plt.xlabel('Year')
-    plt.ylabel('Annual CLV')
-    plt.xticks(rotation=45)  # Rotate x-axis labels for clarity
-    plt.grid(True)
-
-    # Show the plot
-    plt.show()
 
     ### Histogram distribution
     # Set up the plot
@@ -547,7 +530,7 @@ def low_clv(customer_data):
     This function outputs a dataframe showing the threshold for each year.
     '''
 
-    # For each year's data, calculate the lower quartile CLV 
+    # For each year's data, calculate LQ CLV 
     low_clv_threshold_yearly = customer_data.groupby('year')['annual_CLV'].quantile(0.25).reset_index()
 
     # Rename calculated column to low_clv_threshold
@@ -560,7 +543,7 @@ def low_clv(customer_data):
         how='left'
     )
 
-    # Store low CLV customers for each year
+    # To store low CLV customers for each year
     low_clv_customers_by_year = {}
 
     for year in range(2014, 2021):
@@ -580,7 +563,7 @@ def low_clv(customer_data):
 
 def at_risk_customers_yearly(low_clv_customers_by_year):
     '''
-    This function identifies the at-risk customers every year. 
+    This function identifies the at-risk customers of every year. 
     We define our at-risk criteria to be:
     1. Below LQ annual CLV
     2. Below LQ purchase frequency of that year
@@ -593,7 +576,7 @@ def at_risk_customers_yearly(low_clv_customers_by_year):
         # Filter customers in that year
         df = low_clv_customers_by_year[year]
 
-        # Calculate the lower quartile purchase frequency of the year
+        # Calculate the LQ purchase frequency of that year
         lq_purchase_freq = df['total_purchases'].quantile(0.25)
 
         # Identify at-risk customers based on the defined criteria
@@ -640,20 +623,20 @@ def top_categories(df, high_clv_customers):
     top_categories_by_aov['aov'] = top_categories_by_aov['total_revenue'] / top_categories_by_aov['total_purchases']
 
     # Sort by AOV to find top categories
-    top_categories_by_aov = top_categories_by_aov.sort_values(by='aov', ascending=True)
+    top_categories_by_aov = top_categories_by_aov.sort_values(by='aov', ascending=False)
 
     # Display the results
     display(top_categories_by_aov)
 
-    plt.figure(figsize=(10, 6))
+    # plt.figure(figsize=(10, 6))
 
-    # Create a bar chart for AOV
-    plt.bar(top_categories_by_aov['category'], top_categories_by_aov['aov'], color='skyblue')
+    # # Create a bar chart for AOV
+    # plt.bar(top_categories_by_aov['category'], top_categories_by_aov['aov'], color='skyblue')
 
-    # Labels and title
-    plt.xlabel('Category')
-    plt.ylabel('Average Order Value (AOV)')
-    plt.title('Average Order Value (AOV) by Category of High CLV Customers')
-    plt.xticks(rotation=45, ha='right')  # Rotate x labels for better readability
+    # # Labels and title
+    # plt.xlabel('Category')
+    # plt.ylabel('Average Order Value (AOV)')
+    # plt.title('Average Order Value (AOV) by Category of High CLV Customers')
+    # plt.xticks(rotation=45, ha='right') 
 
-    plt.show()
+    # plt.show()
