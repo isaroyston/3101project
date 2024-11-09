@@ -566,7 +566,7 @@ def at_risk_customers_yearly(low_clv_customers_by_year):
     This function identifies the at-risk customers of every year. 
     We define our at-risk criteria to be:
     1. Below LQ annual CLV
-    2. Below LQ purchase frequency of that year
+    2. Below mean purchase frequency of that year
     '''
 
     # Store at-risk customers yearly in a dictionary
@@ -576,12 +576,12 @@ def at_risk_customers_yearly(low_clv_customers_by_year):
         # Filter customers in that year
         df = low_clv_customers_by_year[year]
 
-        # Calculate the LQ purchase frequency of that year
-        lq_purchase_freq = df['total_purchases'].quantile(0.25)
+        # Calculate the mean purchase frequency of that year
+        mean_purchase_freq = df['total_purchases'].mean()
 
         # Identify at-risk customers based on the defined criteria
         at_risk_customers = df[
-            (df['total_purchases'] < lq_purchase_freq)
+            (df['total_purchases'] < mean_purchase_freq)
         ].reset_index()
 
         # Store the at-risk customers for that year
