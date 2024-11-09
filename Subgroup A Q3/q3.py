@@ -6,6 +6,9 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import plotly.express as px
 
+"""
+Data Cleaning and Preprocessing
+"""
 # Define a function to extract the category
 def extract_category(description):
     desc = description.strip()
@@ -27,7 +30,97 @@ def extract_category(description):
             category = desc.split()[0].strip()
     return category
 
-### 1. AOV Analysis
+"""
+ROI analysis functions
+"""
+def analyze_avg_roi_by_year(df, campaigns):
+    """
+    Analyzes and visualizes the average ROI by year for each marketing channel based on specified campaigns.
+
+    Parameters:
+    - df (pd.DataFrame): The dataframe containing the campaign data.
+    - campaigns (list): A list of campaign names to filter for analysis (e.g., ["Easter Sale", "Mid-Year Sale"]).
+
+    Returns:
+    - A Plotly line chart showing the average ROI for each marketing channel across years for the specified campaigns.
+    """
+    # Filter the DataFrame for the specified campaigns
+    df_filtered = df[df['campaign_name'].isin(campaigns)]
+    
+    # Calculate the average ROI for each channel type by year
+    df_avg_roi_by_year = df_filtered.groupby(["year", "channel_type"])["roi"].mean().reset_index()
+    
+    # Plotting the average ROI for each marketing channel across years
+    fig = px.line(
+        df_avg_roi_by_year, 
+        x="year", 
+        y="roi", 
+        color="channel_type",
+        title=f"Average ROI by Year for Each Marketing Channel (Selected Campaigns: {', '.join(campaigns)})",
+        labels={"roi": "Average Return on Investment (%)", "year": "Year", "channel_type": "Channel Type"},
+        markers=True
+    )
+    
+    fig.show()
+
+def plot_rev_cost_roi(df, campaigns):
+    """
+    Creates a scatter plot with average revenue on the x-axis, average cost on the y-axis, 
+    abbreviation as text markers for each point, and color representing the marketing channel,
+    along with a year slider.
+
+    Parameters:
+    - df (pd.DataFrame): The dataframe containing the campaign data.
+    - campaigns (list): A list of campaign names to filter for analysis (e.g., ["Easter Sale", "Mid-Year Sale"]).
+    - abbrev (dict): A dictionary mapping campaign names to abbreviations.
+
+    Returns:
+    - A Plotly scatter plot showing average revenue vs. average cost, with marketing campaign abbreviations as markers,
+      color by channel, and a year slider.
+    """
+    # Filter the DataFrame for the specified campaigns
+    df_filtered = df[df['campaign_name'].isin(campaigns)]
+    
+    # Calculate the average revenue, cost, and ROI for each channel and year
+    df_avg = df_filtered.groupby(['year', 'channel_type']).agg({
+        'rev': 'mean',
+        'cost': 'mean',
+        'roi': 'mean',
+    }).reset_index()
+
+    # Scale the ROI for better visualization
+    df_avg['scaled_roi'] = df_avg['roi'] ** 0.5
+    
+    # Plotting average revenue vs. average cost with campaign abbreviations as text and marketing channel as color
+    fig = px.scatter(
+        df_avg, 
+        x="cost", 
+        y="rev", 
+        color="channel_type",
+        text = "channel_type",
+        size="roi",  # Use average ROI as the marker size
+        animation_frame="year",
+        title=f"Average Revenue vs. Cost vs ROI (Campaigns: {', '.join(campaigns)})",
+        labels={"rev": "Average Revenue", "cost": "Average Cost", "channel_type": "Marketing Channel", "roi": "Average ROI (%)"},
+        hover_data=["year", "roi"]
+    )
+    
+    fig.update_traces(textposition='top center')  # Position the text above the markers
+    
+    fig.update_layout(
+        sliders=[
+            dict(
+                currentvalue={"prefix": "Year: "},
+                pad={"t": 50}
+            )
+        ]
+    )
+    
+    fig.show()
+
+"""
+(Part 2.1) AOV Analysis functions 
+"""
 def aov_analysis(df):
     '''
     Calculates AOV for campaign and non-campaign periods, specific campaigns per month and year
@@ -193,33 +286,6 @@ def aov_campaign_plot(df_campaign_grouped, df_non_campaign_grouped):
     # Show the plot
     fig.show()
 
-def plot_aov_for_year(df_campaign_grouped_monthly, selected_year):
-    '''
-    Plots bar graph of AOV per campaign for the selected year to be used in dashboard.
-    '''
-    # Filter data for the selected year
-    year_data = df_campaign_grouped_monthly[df_campaign_grouped_monthly['year'] == selected_year]
-    
-    # Create bar chart
-    fig = go.Figure(
-        data=go.Bar(
-            x=year_data['campaign_name'],
-            y=year_data['aov'],
-            hovertemplate="AOV: %{y:.2f}<extra></extra>"
-        )
-    )
-
-    # Update layout for readability
-    fig.update_layout(
-        title=f"AOV per Campaign in {selected_year}",
-        xaxis_title="Campaign",
-        yaxis_title="Average Order Value (AOV)",
-        height=500,
-        width=800
-    )
-
-    return fig
-
 def aov_campaign_bar_graph(df_campaign_grouped_monthly):
     '''
     Plots bar graph of AOV per campaign for each year (2014 - 2020).
@@ -256,8 +322,9 @@ def aov_campaign_bar_graph(df_campaign_grouped_monthly):
     # Show figure
     fig.show()
 
-### 2. Sales Growth Rate, Revenue, Transactions, AOS, AOV Before/During/After Campaign 
-
+"""
+(Part 2.2) Sales Growth Rate, Revenue, Transactions, AOS, AOV Before/During/After Campaign 
+"""
 def campaign_eff_metrics(df, chosen_year):
     '''
     Calculates the metrics for evaluating campaign effectiveness in the chosen year.
@@ -509,8 +576,6 @@ def aos_aov_plot(aos_df, aov_df, chosen_year):
     # Show the plot
     fig.show()
 
-
-
 def plot_aov_by_category(aov_by_category_df, chosen_year):
     '''
     Plots AOV by category for each campaign in the chosen year.
@@ -543,3 +608,114 @@ def plot_aov_by_category(aov_by_category_df, chosen_year):
 
     fig.show()
 
+
+"""
+The code below is for dashboarding with Streamlit app
+"""
+
+def sales_growth_dashboard(growth_df, chosen_year):
+    '''
+    Outputs sales growth rate bar plot for each campaign for the chosen year.
+    '''
+
+    # Sales Growth Rate plot
+    fig_growth = go.Figure(data=[
+        go.Bar(name='Growth Rate (%)', x=growth_df['Campaign'], y=growth_df['Growth Rate (%)'], marker_color='pink')
+    ])
+
+    # Update layout for growth rate plot
+    fig_growth.update_layout(
+        title=f'Sales Growth Rate During Campaigns for {chosen_year}',
+        xaxis_title='Campaign',
+        yaxis_title='Growth Rate (%)',
+        height=500,
+        width=900,
+        showlegend=False
+    )
+
+    return fig_growth # Return instead of show for dashboard
+
+def plot_aov_for_year(df_campaign_grouped_monthly, selected_year):
+    '''
+    Plots bar graph of AOV per campaign for the selected year to be used in dashboard.
+    '''
+    # Filter data for the selected year
+    year_data = df_campaign_grouped_monthly[df_campaign_grouped_monthly['year'] == selected_year]
+    
+    # Create bar chart
+    fig = go.Figure(
+        data=go.Bar(
+            x=year_data['campaign_name'],
+            y=year_data['aov'],
+            marker_color='lightgoldenrodyellow',
+            hovertemplate="AOV: %{y:.2f}<extra></extra>"
+        )
+    )
+
+    # Update layout for readability
+    fig.update_layout(
+        title=f"AOV per Campaign in {selected_year}",
+        xaxis_title="Campaign",
+        yaxis_title="Average Order Value (AOV)",
+        height=500,
+        width=900
+    )
+
+    return fig
+
+def revenue_plot_dashboard(rev_df, chosen_year):
+    '''
+    Outputs a bar plot for Revenue before, during, and after each campaign for the chosen year.
+    '''
+    # Create a figure for Revenue plot
+    fig_revenue = go.Figure()
+
+    # Add Revenue bars
+    fig_revenue.add_trace(go.Bar(name='Revenue before Campaign', x=rev_df['Campaign'], y=rev_df['Revenue before Campaign'], 
+                                 marker_color='lightblue'))
+    fig_revenue.add_trace(go.Bar(name='Revenue during Campaign', x=rev_df['Campaign'], y=rev_df['Revenue during Campaign'], 
+                                 marker_color='blue'))
+    fig_revenue.add_trace(go.Bar(name='Revenue after Campaign', x=rev_df['Campaign'], y=rev_df['Revenue after Campaign'], 
+                                 marker_color='darkblue'))
+
+    # Update layout for the Revenue figure
+    fig_revenue.update_layout(
+        title=f'Revenue Comparison for {chosen_year}',
+        xaxis_title="Campaign",
+        yaxis_title="Revenue",
+        height=500,
+        width=900,
+        barmode='group',
+        showlegend=True
+    )
+
+    return fig_revenue
+
+
+def transaction_plot_dashboard(trans_df, chosen_year):
+    '''
+    Outputs a bar plot for Transactions before, during, and after each campaign for the chosen year.
+    '''
+    # Create a figure for Transaction plot
+    fig_transactions = go.Figure()
+
+    # Add Transaction bars
+    fig_transactions.add_trace(go.Bar(name='Transactions before Campaign', x=trans_df['Campaign'], y=trans_df['No. of Transactions before Campaign'], 
+                                      marker_color='lightgreen'))
+    fig_transactions.add_trace(go.Bar(name='Transactions during Campaign', x=trans_df['Campaign'], y=trans_df['No. of Transactions during Campaign'], 
+                                      marker_color='green'))
+    fig_transactions.add_trace(go.Bar(name='Transactions after Campaign', x=trans_df['Campaign'], y=trans_df['No. of Transactions after Campaign'], 
+                                      marker_color='darkgreen'))
+
+    # Update layout for the Transaction figure
+    fig_transactions.update_layout(
+        title=f'Transaction Comparison for {chosen_year}',
+        xaxis_title="Campaign",
+        yaxis_title="Number of Transactions",
+        height=500,
+        width=900,
+        barmode='group',
+        showlegend=True
+    )
+
+    return fig_transactions
