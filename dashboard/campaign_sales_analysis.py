@@ -4,6 +4,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 from q3 import *
 from roi_analysis import * 
+from functions import *
 
 df = pd.read_csv('final_data.csv', low_memory=False) # edit file name based on what is saved locally
 df_mkt = pd.read_csv('mkt_channels_data.csv', low_memory=False) # edit file name based on what is saved locally
