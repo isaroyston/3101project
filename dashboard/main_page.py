@@ -1,5 +1,4 @@
 import streamlit as st
-
 from functions import *
 
 st.set_page_config(page_title="8!", page_icon=":8ball:", layout="wide", initial_sidebar_state="expanded")
@@ -9,6 +8,8 @@ st.write("Arnav, Covan, Richelle, Royston, Samuel, Shirlyn, Yi Faye, Zhi Chao")
 st.divider()
 
 ##################################################
+
+uploaded_file = st.file_uploader("Choose a CSV file", type="csv")
 
 with st.container():
 

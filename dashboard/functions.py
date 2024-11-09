@@ -1,10 +1,16 @@
 import json
 import requests
+import numpy as np
 from datetime import datetime, timedelta
 import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
 import math
+import pandas as pd
+import matplotlib.pyplot as plt
+from statsmodels.tsa.seasonal import seasonal_decompose
+import plotly.graph_objects as go
+import seaborn as sns
 
 def get_delivery_predictions(supplier_name,n_days):
 
@@ -445,3 +451,296 @@ def transaction_plot_dashboard(trans_df, chosen_year):
     )
 
     return fig_transactions
+
+def plot_average_monthly_sales(data):
+    average_monthly_sales = data.groupby('month')['total_price'].sum() / data['year'].nunique()
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=average_monthly_sales.index,
+        y=average_monthly_sales.values,
+        mode='lines+markers',
+        marker=dict(symbol='circle')
+    ))
+    fig.update_layout(
+        title='Average Monthly Sales Throughout the Year',
+        xaxis_title='Month',
+        yaxis_title='Average Monthly Sales',
+        xaxis=dict(tickmode='array', tickvals=list(range(1, 13))),
+        yaxis=dict(tickformat=','),
+        template='plotly_white'
+    )
+    fig.show()
+
+def plot_average_monthly_revenue(data):
+    monthly_revenue = data.groupby(['year', 'month'])['revenue'].sum().reset_index()
+    average_monthly_revenue = monthly_revenue.groupby('month')['revenue'].mean()
+
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=average_monthly_revenue.index,
+        y=average_monthly_revenue.values,
+        mode='lines+markers',
+        marker=dict(symbol='circle')
+    ))
+    fig.update_layout(
+        title='Average Monthly Revenue Throughout the Year',
+        xaxis_title='Month',
+        yaxis_title='Average Monthly Revenue',
+        xaxis=dict(tickmode='array', tickvals=list(range(1, 13))),
+        yaxis=dict(tickformat=','),
+        template='plotly_white'
+    )
+    fig.show()
+
+def plot_market_share_by_category(data):
+    def extract_category(description):
+        desc = description.strip()
+        if desc.startswith('a. '):
+            desc = desc[3:].strip()
+        if ' - ' in desc:
+            category = desc.split(' - ')[0].strip()
+        else:
+            if desc.startswith('Coffee'):
+                category = 'Coffee products'
+            elif desc == 'Medicine':
+                category = 'Medicine'
+            elif desc == 'Kitchen Supplies':
+                category = 'Kitchen Supplies'
+            else:
+                category = desc.split()[0].strip()
+        return category
+
+    data['Category'] = data['description'].apply(extract_category)
+    category_yearly_revenue = data.groupby(['Category', 'year'])['revenue'].sum().reset_index()
+    category_total_revenue = data.groupby('Category')['revenue'].sum().reset_index()
+    category_total_revenue = category_total_revenue.sort_values(by='revenue', ascending=False)
+    total_revenue = category_total_revenue['revenue'].sum()
+    category_total_revenue['Market_Share'] = (category_total_revenue['revenue'] / total_revenue) * 100
+    labels = category_total_revenue['Category']
+    sizes = category_total_revenue['Market_Share']
+    explode = [0.05 if (size >= 15) else 0 for size in sizes]
+    colors = sns.color_palette('tab10', n_colors=len(labels)).as_hex()
+    fig = go.Figure()
+    fig.add_trace(go.Pie(
+        labels=labels,
+        values=sizes,
+        hole=0.3,
+        marker=dict(colors=colors, line=dict(color='white', width=1)),
+        textinfo='label+percent',
+        textposition='inside',
+        insidetextorientation='radial',
+        pull=explode
+    ))
+    fig.update_layout(
+        title='Market Share by Category',
+        showlegend=False
+    )
+    fig.show()
+
+def plot_monthly_sales_by_year(data):
+    data = data[data['year'] != 2021]
+    monthly_sales = data.groupby(['year', 'month'])['total_price'].sum().reset_index()
+    monthly_sales_pivot = monthly_sales.pivot(index='month', columns='year', values='total_price')
+
+    fig = go.Figure()
+    for year in monthly_sales_pivot.columns:
+        fig.add_trace(go.Scatter(
+            x=monthly_sales_pivot.index,
+            y=monthly_sales_pivot[year],
+            mode='lines+markers',
+            name=str(year)
+        ))
+    fig.update_layout(
+        title='Monthly Sales by Year',
+        xaxis_title='Month',
+        yaxis_title='Total Monthly Sales',
+        xaxis=dict(tickmode='array', tickvals=list(range(1, 13))),
+        yaxis=dict(tickformat=','),
+        template='plotly_white',
+        legend_title='Year'
+    )
+    fig.show()
+
+def plot_monthly_sales_trends(data, top_n=5):
+    # Identify top products
+    top_products = data.groupby('item_name')['total_price'].sum().nlargest(top_n).index
+
+    # Create a modified 'item_name' column with 'Others' for non-top products
+    data['item_name_mod'] = data['item_name'].where(data['item_name'].isin(top_products), 'Others')
+
+    # Prepare monthly sales data for top products and 'Others'
+    monthly_sales_pivot = (
+        data.groupby(['month', 'item_name_mod'])['total_price']
+        .sum()
+        .unstack()
+        .fillna(0)
+    )
+
+    # Create the Plotly figure
+    fig = go.Figure()
+
+    for column in monthly_sales_pivot.columns:
+        fig.add_trace(go.Scatter(
+            x=monthly_sales_pivot.index,
+            y=monthly_sales_pivot[column],
+            mode='lines+markers',
+            name=column
+        ))
+
+    fig.update_layout(
+        title='Monthly Sales Trends for Top Products and Others',
+        xaxis_title='Month',
+        yaxis_title='Total Sales',
+        xaxis=dict(tickmode='array', tickvals=list(range(1, 13))),
+        yaxis=dict(tickformat=','),
+        template='plotly_white',
+        legend_title='Product'
+    )
+    fig.show()
+
+def plot_monthly_sales_and_decomposition(data):
+    # If 'purchase_date' is missing, identify the correct column name
+    if 'purchase_date' not in data.columns:
+        # Let's assume the correct column name is 'PurchaseDate'
+        if 'PurchaseDate' in data.columns:
+            data.rename(columns={'PurchaseDate': 'purchase_date'}, inplace=True)
+        else:
+            print("Error: 'purchase_date' column not found in the DataFrame.")
+            print("Available columns:", data.columns.tolist())
+            # Exit or raise an error to prevent further issues
+            raise KeyError("'purchase_date' column not found in the DataFrame.")
+
+    # Now proceed with the data preprocessing
+    data['purchase_date'] = pd.to_datetime(data['purchase_date'], errors='coerce')
+    data = data[data['purchase_date'] <= '2020-12-31']
+    data = data.dropna(subset=['total_price', 'purchase_date'])
+    data.set_index('purchase_date', inplace=True)
+    data['total_price'] = pd.to_numeric(data['total_price'], errors='coerce')
+
+    # Proceed with the seasonal decomposition
+    monthly_sales = data['total_price'].resample('M').sum()
+
+    # Plot monthly sales
+    fig = go.Figure()
+
+    fig.add_trace(go.Scatter(
+        x=monthly_sales.index,
+        y=monthly_sales.values,
+        mode='lines+markers',
+        marker=dict(symbol='circle'),
+        name='Total Sales'
+    ))
+
+    fig.update_layout(
+        title='Monthly Total Sales Over Time (Up to 2020)',
+        xaxis_title='Date',
+        yaxis_title='Total Sales',
+        template='plotly_white'
+    )
+
+    fig.show()
+
+    # Perform seasonal decomposition
+    decomposition = seasonal_decompose(monthly_sales, model='additive')
+
+    # Plot the decomposition
+    fig = go.Figure()
+    fig.add_trace(go.Scatter(
+        x=decomposition.trend.index,
+        y=decomposition.trend,
+        mode='lines',
+        name='Trend'
+    ))
+    fig.add_trace(go.Scatter(
+        x=decomposition.seasonal.index,
+        y=decomposition.seasonal,
+        mode='lines',
+        name='Seasonal'
+    ))
+    fig.add_trace(go.Scatter(
+        x=decomposition.resid.index,
+        y=decomposition.resid,
+        mode='lines',
+        name='Residual'
+    ))
+    fig.update_layout(
+        title='Seasonal Decomposition of Monthly Sales',
+        xaxis_title='Date',
+        yaxis_title='Value',
+        template='plotly_white'
+    )
+    fig.show()
+
+def plot_revenue_treemap(data):
+    # Step 1: Data Preparation
+    data['revenue'] = pd.to_numeric(data['revenue'], errors='coerce')
+    data_clean = data.dropna(subset=['store_region', 'store_district', 'store_sub_district', 'revenue'])
+
+    # Step 2: Build Hierarchical Data
+
+    # Sub-Districts
+    sub_districts = data_clean.groupby(['store_region', 'store_district', 'store_sub_district'], as_index=False)['revenue'].sum()
+    sub_districts['id'] = sub_districts['store_region'] + '/' + sub_districts['store_district'] + '/' + sub_districts['store_sub_district']
+    sub_districts['parent'] = sub_districts['store_region'] + '/' + sub_districts['store_district']
+    sub_districts['label'] = sub_districts['store_sub_district']
+    sub_districts['level'] = 2
+
+    # Districts
+    districts = data_clean.groupby(['store_region', 'store_district'], as_index=False)['revenue'].sum()
+    districts['id'] = districts['store_region'] + '/' + districts['store_district']
+    districts['parent'] = districts['store_region']
+    districts['label'] = districts['store_district']
+    districts['level'] = 1
+
+    # Regions
+    regions = data_clean.groupby(['store_region'], as_index=False)['revenue'].sum()
+    regions['id'] = regions['store_region']
+    regions['parent'] = 'All Regions'
+    regions['label'] = regions['store_region']
+    regions['level'] = 0
+
+    # Root Node
+    root = pd.DataFrame({
+        'id': ['All Regions'],
+        'parent': [''],
+        'label': ['All Regions'],
+        'revenue': [regions['revenue'].sum()],
+        'level': -1  # Root level
+    })
+
+    # Combine DataFrames
+    all_data = pd.concat(
+        [root[['id', 'parent', 'label', 'revenue', 'level']],
+         regions[['id', 'parent', 'label', 'revenue', 'level']],
+         districts[['id', 'parent', 'label', 'revenue', 'level']],
+         sub_districts[['id', 'parent', 'label', 'revenue', 'level']]],
+        ignore_index=True
+    )
+
+    # Step 3: Create the Treemap
+    fig = go.Figure(go.Treemap(
+        labels=all_data['label'],
+        parents=all_data['parent'],
+        ids=all_data['id'],
+        values=all_data['revenue'],
+        branchvalues='total',
+        maxdepth=2,  # Initial view shows up to districts
+        textinfo='label+value',
+        hovertemplate='<b>%{label}</b><br>Revenue: $%{value:,.2f}<extra></extra>',
+        marker=dict(
+            colors=all_data['revenue'],
+            colorscale='ylgn',
+            colorbar=dict(title='Revenue'),
+        )))
+    # Step 4: Update Layout and Traces
+    fig.update_layout(
+        title='Revenue by Store Region, District, and Sub-District',
+        margin=dict(t=50, l=25, r=25, b=25)
+    )
+    # Adjust font sizes and colors
+    fig.update_traces(
+        insidetextfont=dict(size=14, color='black'),
+        selector=dict(type='treemap')
+    )
+    # Step 5: Display the Treemap
+    fig.show()
