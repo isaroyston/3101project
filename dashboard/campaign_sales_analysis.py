@@ -1,9 +1,6 @@
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-from plotly.subplots import make_subplots
-from q3 import *
-from roi_analysis import * 
 from functions import *
 
 df = pd.read_csv('final_data.csv', low_memory=False) # edit file name based on what is saved locally
@@ -40,6 +37,7 @@ df2 = df[df['year'] < 2021]
 df_campaign_by_month = aov_analysis(df2)[4]
 
 # Streamlit App
+st.set_page_config(page_title="Ecommerce Dashboard", layout="wide")
 st.title("Ecommerce Dashboard (2014 - 2020)")
 
 # Calculate general statistics
@@ -54,18 +52,32 @@ col2.metric("Total Revenue to Date", f"${total_revenue:,.2f}")
 
 # Select a year
 selected_year = st.selectbox("Select a year", options=range(2014, 2021))
+metrics = campaign_eff_metrics(df, selected_year)
 
-# Plot AOV bar chart for the selected year
-st.write(f"### AOV per Campaign in {selected_year}")
-fig = plot_aov_for_year(df_campaign_by_month, selected_year)
-st.plotly_chart(fig)
 
-# Plot the Average ROI by Year using custom function
-st.write("### Average ROI by Year for Each Marketing Channel (Selected Campaigns)")
-roi_fig = analyze_avg_roi_by_year(df_mkt, ["Easter Sale", "Mid-Year Sale", "Christmas"])
-st.plotly_chart(roi_fig)
+fig1 = sales_growth_dashboard(metrics[0],selected_year)
+fig2 = plot_aov_for_year(df_campaign_by_month, selected_year)
+fig3 = revenue_plot_dashboard(metrics[1], selected_year)
+fig4 = transaction_plot_dashboard(metrics[2], selected_year)
+fig5 = analyze_avg_roi_by_year(df_mkt, ["Easter Sale", "Mid-Year Sale", "Christmas"])
+fig6 = plot_rev_cost_roi(df_mkt, ["Easter Sale", "Mid-Year Sale", "Christmas"])
 
-# Plot the Revenue vs Cost vs ROI scatter plot with a year slider using custom function
-st.write("### Average Revenue vs Cost vs ROI (Selected Campaigns)")
-rev_cost_roi_fig = plot_rev_cost_roi(df_mkt, ["Easter Sale", "Mid-Year Sale", "Christmas"])
-st.plotly_chart(rev_cost_roi_fig)
+with st.container():
+    col1, col2 = st.columns(2)
+    with col1:
+        st.plotly_chart(fig1, use_container_width=True)
+    with col2:
+        st.plotly_chart(fig2, use_container_width=True)
+
+    col3, col4 = st.columns(2)
+    with col3:
+        st.plotly_chart(fig3, use_container_width=True)
+    with col4:
+        st.plotly_chart(fig4, use_container_width=True)
+
+col_left, col_center, col_right = st.columns([1, 2, 1])
+with col_center:
+    st.plotly_chart(fig5, use_container_width=True)
+    st.plotly_chart(fig6, use_container_width=True)
+
+
