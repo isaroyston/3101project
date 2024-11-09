@@ -6,7 +6,6 @@ import plotly.express as px
 import plotly.graph_objects as go
 import pandas as pd
 import math
-import pandas as pd
 import matplotlib.pyplot as plt
 from statsmodels.tsa.seasonal import seasonal_decompose
 import plotly.graph_objects as go
@@ -453,6 +452,9 @@ def transaction_plot_dashboard(trans_df, chosen_year):
     return fig_transactions
 
 def plot_average_monthly_sales(data):
+    data['purchase_date'] = pd.to_datetime(data['purchase_date'], errors='coerce')
+    data['year'] = data['purchase_date'].dt.year
+    data['month'] = data['purchase_date'].dt.month
     average_monthly_sales = data.groupby('month')['total_price'].sum() / data['year'].nunique()
     fig = go.Figure()
     fig.add_trace(go.Scatter(
@@ -469,9 +471,12 @@ def plot_average_monthly_sales(data):
         yaxis=dict(tickformat=','),
         template='plotly_white'
     )
-    fig.show()
+    return fig
 
 def plot_average_monthly_revenue(data):
+    data['purchase_date'] = pd.to_datetime(data['purchase_date'], errors='coerce')
+    data['year'] = data['purchase_date'].dt.year
+    data['month'] = data['purchase_date'].dt.month
     monthly_revenue = data.groupby(['year', 'month'])['revenue'].sum().reset_index()
     average_monthly_revenue = monthly_revenue.groupby('month')['revenue'].mean()
 
@@ -490,9 +495,12 @@ def plot_average_monthly_revenue(data):
         yaxis=dict(tickformat=','),
         template='plotly_white'
     )
-    fig.show()
+    return fig
 
 def plot_market_share_by_category(data):
+    data['purchase_date'] = pd.to_datetime(data['purchase_date'], errors='coerce')
+    data['year'] = data['purchase_date'].dt.year
+    data['month'] = data['purchase_date'].dt.month
     def extract_category(description):
         desc = description.strip()
         if desc.startswith('a. '):
@@ -535,9 +543,12 @@ def plot_market_share_by_category(data):
         title='Market Share by Category',
         showlegend=False
     )
-    fig.show()
+    return fig
 
 def plot_monthly_sales_by_year(data):
+    data['purchase_date'] = pd.to_datetime(data['purchase_date'], errors='coerce')
+    data['year'] = data['purchase_date'].dt.year
+    data['month'] = data['purchase_date'].dt.month
     data = data[data['year'] != 2021]
     monthly_sales = data.groupby(['year', 'month'])['total_price'].sum().reset_index()
     monthly_sales_pivot = monthly_sales.pivot(index='month', columns='year', values='total_price')
@@ -559,9 +570,12 @@ def plot_monthly_sales_by_year(data):
         template='plotly_white',
         legend_title='Year'
     )
-    fig.show()
+    return fig
 
 def plot_monthly_sales_trends(data, top_n=5):
+    data['purchase_date'] = pd.to_datetime(data['purchase_date'], errors='coerce')
+    data['year'] = data['purchase_date'].dt.year
+    data['month'] = data['purchase_date'].dt.month
     # Identify top products
     top_products = data.groupby('item_name')['total_price'].sum().nlargest(top_n).index
 
@@ -596,9 +610,46 @@ def plot_monthly_sales_trends(data, top_n=5):
         template='plotly_white',
         legend_title='Product'
     )
-    fig.show()
+    return fig
+
+def plot_top_consistent_sellers(data, n):
+    top_monthly_products = (
+        data.groupby(['year', 'month', 'item_name'])['total_price']
+        .sum()
+        .reset_index()
+        .sort_values(['year', 'month', 'total_price'], ascending=[True, True, False])
+        .groupby(['year', 'month'])
+        .head(n)
+    )
+    consistent_top_sellers = (
+        top_monthly_products.groupby('item_name')
+        .size()
+        .reset_index(name=f'frequency_in_top_{n}')
+        .sort_values(by=f'frequency_in_top_{n}', ascending=False)
+        .head(10)
+    )
+
+    fig = go.Figure()
+
+    fig.add_trace(go.Bar(
+        x=consistent_top_sellers['item_name'],
+        y=consistent_top_sellers[f'frequency_in_top_{n}'],
+        marker_color='skyblue'
+    ))
+
+    fig.update_layout(
+        title=f"Top 10 Products by Frequency in Monthly Top {n}",
+        xaxis_title="Product Name",
+        yaxis_title=f"Months in Top {n}",
+        xaxis=dict(tickangle=45),
+        template='plotly_white'
+    )
+    return fig
 
 def plot_monthly_sales_and_decomposition(data):
+    data['purchase_date'] = pd.to_datetime(data['purchase_date'], errors='coerce')
+    data['year'] = data['purchase_date'].dt.year
+    data['month'] = data['purchase_date'].dt.month
     # If 'purchase_date' is missing, identify the correct column name
     if 'purchase_date' not in data.columns:
         # Let's assume the correct column name is 'PurchaseDate'
@@ -638,7 +689,7 @@ def plot_monthly_sales_and_decomposition(data):
         template='plotly_white'
     )
 
-    fig.show()
+    return fig
 
     # Perform seasonal decomposition
     decomposition = seasonal_decompose(monthly_sales, model='additive')
@@ -669,9 +720,12 @@ def plot_monthly_sales_and_decomposition(data):
         yaxis_title='Value',
         template='plotly_white'
     )
-    fig.show()
+    return fig
 
 def plot_revenue_treemap(data):
+    data['purchase_date'] = pd.to_datetime(data['purchase_date'], errors='coerce')
+    data['year'] = data['purchase_date'].dt.year
+    data['month'] = data['purchase_date'].dt.month
     # Step 1: Data Preparation
     data['revenue'] = pd.to_numeric(data['revenue'], errors='coerce')
     data_clean = data.dropna(subset=['store_region', 'store_district', 'store_sub_district', 'revenue'])
@@ -743,4 +797,4 @@ def plot_revenue_treemap(data):
         selector=dict(type='treemap')
     )
     # Step 5: Display the Treemap
-    fig.show()
+    return fig

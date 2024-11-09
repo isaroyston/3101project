@@ -7,7 +7,7 @@ data['month'] = data['purchase_date'].dt.month
 
 #plot_average_monthly_revenue(data)
 #plot_average_monthly_sales(data)
-plot_market_share_by_category(data)
+#plot_market_share_by_category(data)
 #plot_monthly_sales_and_decomposition(data)
 #plot_monthly_sales_by_year(data)
 #plot_monthly_sales_trends(data)
