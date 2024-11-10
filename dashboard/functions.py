@@ -136,6 +136,72 @@ def plot_rev_cost_roi(df, campaigns):
     return fig
 
 """
+At-risk customers functions (q2)
+"""
+
+def annual_individual_clv(df, selected_year):
+    '''
+    This function calculates the annual CLV of each individual customer for the selected year.
+    We output a dataframe with an annual_CLV column for each customer in the selected year.
+    '''
+    # Filter the data for the selected year
+    year_data = df[df['year'] == selected_year]
+
+    # Calculate total revenue, number of purchases, and customer lifespan for each customer for the selected year
+    customer_data = year_data.groupby(['customer_key', 'year']).agg(
+        total_revenue=('revenue', 'sum'),              # Total revenue per customer for the selected year
+        total_purchases=('revenue', 'count'),          # Total number of purchases per customer for the selected year
+        first_purchase=('purchase_date', 'min'),       # Date of first purchase within the year
+        last_purchase=('purchase_date', 'max')         # Date of last purchase within the year
+    ).reset_index()
+
+    # Calculate the annual customer lifespan (in years) based on the first and last purchase dates within the selected year
+    customer_data['annual_lifespan'] = (
+        (customer_data['last_purchase'] - customer_data['first_purchase']).dt.days
+    ) / 365.25
+
+    # Calculate annual CLV using the formula for the selected year per customer
+    customer_data['annual_CLV'] = customer_data['total_revenue'] * (
+        customer_data['annual_lifespan'] / customer_data['total_purchases']
+    )
+
+    return customer_data
+
+def low_clv(customer_data, selected_year):
+    '''
+    This function calculates the low CLV threshold for the selected year as the lower quartile of CLV.
+    It outputs a DataFrame of low CLV customers for the selected year.
+    '''
+    # Filter customer data for the selected year
+    year_data = customer_data[customer_data['year'] == selected_year]
+
+    # Calculate LQ CLV threshold for the selected year
+    low_clv_threshold = year_data['annual_CLV'].quantile(0.25)
+
+    # Mark customers below the threshold as low CLV
+    low_clv_customers = year_data[year_data['annual_CLV'] <= low_clv_threshold].copy()
+    low_clv_customers['low_clv_threshold'] = low_clv_threshold
+
+    return low_clv_customers
+
+def at_risk_customers_for_selected_year(low_clv_customers):
+    '''
+    This function identifies the at-risk customers for the selected year.
+    At-risk criteria:
+    1. Below LQ annual CLV
+    2. Below mean purchase frequency of that year
+    '''
+    # Calculate the mean purchase frequency for the selected year
+    mean_purchase_freq = low_clv_customers['total_purchases'].mean()
+
+    # Identify at-risk customers based on the defined criteria
+    at_risk_customers = low_clv_customers[
+        low_clv_customers['total_purchases'] < mean_purchase_freq
+    ].reset_index(drop=True)
+
+    return at_risk_customers
+        
+"""
 AOV functions (q3)
 """
 def extract_category(description):
@@ -149,7 +215,7 @@ def extract_category(description):
     else:
         # Special cases for descriptions without ' - '
         if desc.startswith('Coffee'):
-            category = 'Coffee products'
+            category = 'Coffee Products'
         elif desc == 'Medicine':
             category = 'Medicine'
         elif desc == 'Kitchen Supplies':
@@ -365,7 +431,7 @@ def sales_growth_dashboard(growth_df, chosen_year):
 
     # Update layout for growth rate plot
     fig_growth.update_layout(
-        title=f'Sales Growth Rate During Campaigns for {chosen_year}',
+        title=f'Sales Growth Rate During Campaigns in {chosen_year}',
         xaxis_title='Campaign',
         yaxis_title='Growth Rate (%)',
         height=500,
@@ -394,7 +460,7 @@ def plot_aov_for_year(df_campaign_grouped_monthly, selected_year):
 
     # Update layout for readability
     fig.update_layout(
-        title=f"AOV per Campaign in {selected_year}",
+        title=f"Average Order Value (AOV) per Campaign in {selected_year}",
         xaxis_title="Campaign",
         yaxis_title="Average Order Value (AOV)",
         height=500,
