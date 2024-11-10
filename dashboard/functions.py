@@ -22,7 +22,7 @@ def get_delivery_predictions(supplier_name,n_days):
     # print("TYPE", type(res.json()))
     # res_dict = json.loads(res.json()['predictions'])
 
-    with open(f'./Subgroup_B_Q3/models/serialized_model_{supplier_name}.json', 'r') as f:
+    with open(f'../Subgroup_B_Q3/models/serialized_model_{supplier_name}.json', 'r') as f:
         prophet_model = model_from_json(f.read())
 
     prophet_predicted = prophet_model.predict(
@@ -31,16 +31,21 @@ def get_delivery_predictions(supplier_name,n_days):
         )
     )["yhat"].reset_index(drop=True)
 
-    x = [(datetime.today() + timedelta(days=i)).strftime(format="%Y-%m-%d") for i in range(1, n_days + 1)]
+    x = [datetime.today() + timedelta(days=i) for i in range(1, n_days + 1)]
     y = [i[1] for i in prophet_predicted.items()]
 
     fig = px.line(x=x, y=y)
     fig.add_hline(y=3, line_color='red')
     fig.update_layout(xaxis_title="Order placed on", yaxis_title="Expected time to deliver (days)", showlegend=False)
 
-    df = pd.DataFrame({"Orders placed on":x, "Orders expected to be late by (days)":y})
-    df = df.loc[df["Orders expected to be late by (days)"] > 3]
-    df["Orders expected to be late by (days)"] = df["Orders expected to be late by (days)"].apply(math.ceil) - 3
+    df = pd.DataFrame({"Customer orders placed on":x, "Delivery expected to be late by (days)":y})
+    df = df.loc[df["Delivery expected to be late by (days)"] > 3]
+
+    df["Delivery expected to be late by (days)"] = df["Delivery expected to be late by (days)"].apply(math.ceil) - 3
+    df["Stock supplies on"] = df["Customer orders placed on"] - pd.to_timedelta(df["Delivery expected to be late by (days)"]+3, unit='D')
+
+    df["Customer orders placed on"] = df["Customer orders placed on"].dt.strftime('%Y-%m-%d')
+    df["Stock supplies on"] = df["Stock supplies on"].dt.strftime('%Y-%m-%d')
 
     return fig, df
 
