@@ -1,29 +1,38 @@
+import math
 import json
 import requests
 import numpy as np
+import pandas as pd
+import seaborn as sns
 from datetime import datetime, timedelta
+import matplotlib.pyplot as plt
 import plotly.express as px
 import plotly.graph_objects as go
-import pandas as pd
-import math
-import matplotlib.pyplot as plt
 from statsmodels.tsa.seasonal import seasonal_decompose
-import plotly.graph_objects as go
-import seaborn as sns
+from prophet.serialize import model_from_json
 
 def get_delivery_predictions(supplier_name,n_days):
 
-    payload = {
-        "supplier_name": supplier_name,
-        "n_days": int(n_days)
-    }
+    # payload = {
+    #     "supplier_name": supplier_name,
+    #     "n_days": int(n_days)
+    # }
+    #
+    # res = requests.post(f"http://127.0.0.1:8000/Subgroup_B_Q3/make_predictions/", json=payload)
+    # print("TYPE", type(res.json()))
+    # res_dict = json.loads(res.json()['predictions'])
 
-    res = requests.post(f"http://127.0.0.1:8000/Subgroup_B_Q3/make_predictions/", json=payload)
-    print("TYPE", type(res.json()))
-    res_dict = json.loads(res.json()['predictions'])
+    with open(f'./Subgroup_B_Q3/models/serialized_model_{supplier_name}.json', 'r') as f:
+        prophet_model = model_from_json(f.read())
+
+    prophet_predicted = prophet_model.predict(
+        prophet_model.make_future_dataframe(
+            periods=n_days, include_history=False
+        )
+    )["yhat"].reset_index(drop=True)
 
     x = [(datetime.today() + timedelta(days=i)).strftime(format="%Y-%m-%d") for i in range(1, n_days + 1)]
-    y = [i[1] for i in res_dict.items()]
+    y = [i[1] for i in prophet_predicted.items()]
 
     fig = px.line(x=x, y=y)
     fig.add_hline(y=3, line_color='red')
