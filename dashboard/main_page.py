@@ -8,7 +8,7 @@ st.write("Arnav, Covan, Richelle, Royston, Samuel, Shirlyn, Yi Faye, Zhi Chao")
 st.divider()
 
 #Change for your own path
-data = pd.read_csv("C:\\Users\\isaro\\Downloads\\final.csv")
+data = pd.read_csv("final_data.csv")
 ##################################################
 
 with st.container():
@@ -17,19 +17,24 @@ with st.container():
 
     st.subheader("Delivery time forecast (Subgroup B Q3)")
 
-    st.markdown("""
+    st.write("""
+    This graph shows the forecast of expected time for item delivery, for orders placed on a particular date.
+    The range of forecast can be adjusted, and expected late deliveries (more than 3 days) will be highlighted.
+    A date to order from the supplier will be recommended.
+    
     **Assumptions**:
     1. Seller does not have excess stock, and places orders from supplier based on customer demand. This is to lower the risk of customers receiving poor quality items, as food items are perishable.
     2. Deliveries completed within 3 days are considered on time, any longer and the delivery will be considered late.
-    3. Constant expected time taken (3 days) for items to reach customers from the seller. Late deliveries are entirely due to supplier bottlenecks. 
+    3. Constant expected time taken (3 days) for items to reach customers from the seller. Late deliveries are entirely due to supplier bottlenecks.
     """)
 
-    supplier_name = st.selectbox(label="**Select supplier**", options=supplier_list)
+    supplier_choice = st.selectbox(label="**Select supplier**", options=supplier_list)
 
     n_days = st.slider(label="**Select number of days to forecast**", value=1, step=1, min_value=1, max_value=365)
-    if supplier_name and n_days:
-        fig, df = get_delivery_predictions(supplier_name, n_days)
+    if supplier_choice and n_days:
+        fig, df = get_delivery_predictions(supplier_choice, n_days)
         st.plotly_chart(fig, use_container_width=True)
+        st.write("Recommended supply schedule")
         st.dataframe(df, use_container_width=True)
 
 with st.container():
