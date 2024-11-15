@@ -7,30 +7,6 @@ from plotly.subplots import make_subplots
 import plotly.express as px
 
 """
-Data Cleaning and Preprocessing
-"""
-# Define a function to extract the category
-def extract_category(description):
-    desc = description.strip()
-    # Remove 'a. ' prefix if present
-    if desc.startswith('a. '):
-        desc = desc[3:].strip()
-    # If ' - ' exists, take the part before it
-    if ' - ' in desc:
-        category = desc.split(' - ')[0].strip()
-    else:
-        # Special cases for descriptions without ' - '
-        if desc.startswith('Coffee'):
-            category = 'Coffee products'
-        elif desc == 'Medicine':
-            category = 'Medicine'
-        elif desc == 'Kitchen Supplies':
-            category = 'Kitchen Supplies'
-        else:
-            category = desc.split()[0].strip()
-    return category
-
-"""
 ROI analysis functions
 """
 def analyze_avg_roi_by_year(df, campaigns):
@@ -284,42 +260,6 @@ def aov_campaign_plot(df_campaign_grouped, df_non_campaign_grouped):
     )
 
     # Show the plot
-    fig.show()
-
-def aov_campaign_bar_graph(df_campaign_grouped_monthly):
-    '''
-    Plots bar graph of AOV per campaign for each year (2014 - 2020).
-    '''
-    
-    # Create subplot for each year
-    fig = make_subplots(rows=2, cols=4, subplot_titles=[f"AOV per Campaign for {year}" for year in range(2014, 2021)])
-
-    # Add traces for each year
-    for idx, year in enumerate(range(2014, 2021)):
-        row = (idx // 4) + 1 
-        col = (idx % 4) + 1
-        year_data = df_campaign_grouped_monthly[df_campaign_grouped_monthly['year'] == year]
-
-        fig.add_trace(
-            go.Bar(
-                x=year_data['campaign_name'],
-                y=year_data['aov'],
-                hovertemplate="AOV: %{y}"
-            ),
-            row=row, col=col
-        )
-
-    # Update layout for readability
-    fig.update_layout(
-        title="Average Order Value (AOV) per Campaign (2014 - 2020)",
-        showlegend=False,
-        height=700,
-        width=1200,
-        xaxis_title="Campaign",
-        yaxis_title="AOV"
-    )
-
-    # Show figure
     fig.show()
 
 """
