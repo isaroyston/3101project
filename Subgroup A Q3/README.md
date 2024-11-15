@@ -1,1 +1,1 @@
-init
+This repository contains an ipynb and py, covering ROI analysis, average order value (AOV) during campaigns, and the impact of various marketing channels on sales and customer engagement. The notebook includes data cleaning, visualization, and detailed analysis of key metrics such as sales growth, transaction counts, and AOV by product category.
